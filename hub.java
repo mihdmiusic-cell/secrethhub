@@ -1,4 +1,3 @@
-
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -1411,4 +1410,4 @@ local function createTabContent(name)
         local textBoxCorner = Instance.new("UICorner", speedTextBox)
         textBoxCorner.CornerRadius = UDim.new(0, 8)
 
-        speedTextBox.FocusLost:Connect(funct... (Tiempo restante: 37 KB)
+        speedTextBox.FocusLost:Connect(funct
