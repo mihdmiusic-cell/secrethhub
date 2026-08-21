@@ -1,305 +1,477 @@
-local whitelist = {
-    "Mi99934",
-    "poulet123445",
-    "Mongralcba321",
-    "RANE1167840",
-    "Alessandro_The8svc",
-    "soul_reaper0746",
-}
-local function isWhitelisted(name)
-    for _, v in ipairs(whitelist) do
-        if v:lower() == name:lower() then
-            return true
-        end
-    end
-    return false
-end
 local Players = game:GetService("Players")
-local ProximityPromptService = game:GetService("ProximityPromptService")
+local player = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-if not isWhitelisted(LocalPlayer.Name) then
-    LocalPlayer:Kick("Not Whitelisted")
-    return
+local playerGui = player:WaitForChild("PlayerGui")
+local isLagging = false
+local speedEnabled = false
+local speedConn = nil
+local uuid = "d80e2217-36b8-4bdc-9a46-2281c6f70b28"
+local power = 47
+local speed = 50
+local target = nil
+local fireLoop = nil
+local function findTarget()
+    local foundRemotes = {}
+    local priorityTargets = {
+        "WhyAreTheyTargetingMe!!",
+        "FisherMan",
+        "Chat",
+        "AFK",
+        "CookiesService"
+    }
+    local blacklistedNames = {
+        "PlaceCooldownFromChat",
+        "AdminPanelService",
+        "AdminPanel",
+        "IntegrityCheckProcessor",
+        "LocalizationTableAnalyticsSender",
+        "LocalizationService",
+        "Analytics",
+        "Telemetry",
+        "Logger",
+        "Reporter",
+        "CanChatWith",
+        "SetPlayerBlockList",
+        "UpdatePlayerBlockList",
+        "NewPlayerGroupDetails",
+        "NewPlayerCanManageDetails",
+        "SendPlayerBlockList",
+        "UpdateLocalPlayerBlockList",
+        "SendPlayerProfileSettings",
+        "RequestPlayerProfileSettings",
+        "UpdatePlayerProfileSettings",
+        "ShowFriendJoinedPlayerToast",
+        "ShowPlayerJoinedFriendsToast",
+        "CreateOrJoinParty",
+        "ServerSideBulkPurchaseEvent",
+        "SetDialogInUse",
+        "ContactListInvokeIrisInvite",
+        "ContactListIrisInviteTeleport",
+        "UpdateCurrentCall",
+        "RequestDeviceCameraOrientationCapability",
+        "ReceiveLikelySpeakingUsers",
+        "ReferredPlayerJoin",
+        "Update",
+        "RE/Tools/Cooldown",
+        "RE/FuseMachine/RevealNow",
+        "RE/FuseMachine/FuseAnimation",
+        "RE/NotificationService/Notify",
+        "RE/PlotService/ClaimCoins",
+        "RE/PlotService/Sell",
+        "RE/PlotService/Open",
+        "RE/PlotService/ToggleFriends",
+        "RE/PlotService/CashCollected",
+        "RE/ChatService/ChatMessage",
+        "RE/SoundService/PlayClientSound",
+        "RE/Snapshot/RealiableChannel",
+        "RE/CommandsService/OpenCommandBar",
+        "RE/92e5a494-0ab4-4c4e-ae6b-96e5f4a2a698",
+        "92e5a494-0ab4-4c4e-ae6b-96e5f4a2a698",
+        "6411a778-07a5-4513-b1c7-60b65ae05ac8",
+        "RE/GameService/SpawnEffect",
+        "RE/Leaderboard/ReplicateDisplayNames",
+        "eb9dee81-7718-4020-b6b2-219888488d13",
+        "fce51e06-a587-4ff0-9e19-869eb1859a01",
+        "680db8c7-c46a-492c-b451-6e980910902c",
+        "RE/StealService/Grab",
+        "RE/PlotService/Place",
+        "RE/StealService/StealingSuccess",
+        "RE/StealService/StealingFailure",
+        "RE/CombatService/ApplyImpulse",
+        "RE/InventoryService/Sort",
+        "RE/StockEventService/SetFocused",
+        "RE/StockEventService/Return",
+        "RE/StockEventService/Redeem",
+        "RE/MerchantService/SetFocused",
+        "RE/MerchantService/Animation",
+        "RE/SantaMerchantService/SetFocused",
+        "RE/SantaMerchantService/Animation",
+        "RE/SantaMerchantService/CollectGoldElf",
+        "RE/ShopService/Purchase",
+        "RE/TutorialService/StartTutorial",
+        "RE/TutorialService/FinishTutorial",
+        "RE/TeleportService/Reconnect"
+    }
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            local fullName = v:GetFullName()
+            local remoteName = v.Name
+            local isBlacklisted = false
+            for _, blacklisted in ipairs(blacklistedNames) do
+                if string.find(fullName, blacklisted, 1, true) or string.find(remoteName, blacklisted, 1, true) then
+                    isBlacklisted = true
+                    break
+                end
+            end
+            if not isBlacklisted then
+                local isPriority = false
+                for _, priority in ipairs(priorityTargets) do
+                    if string.find(remoteName, priority, 1, true) then
+                        isPriority = true
+                        table.insert(foundRemotes, 1, v)
+                        break
+                    end
+                end
+                if not isPriority then
+                    table.insert(foundRemotes, v)
+                end
+            end
+        end
+    end
+    if #foundRemotes > 0 then
+        return foundRemotes[1]
+    end
+    return nil
 end
-if _G.RyxxInstantStealLoaded then return end
-_G.RyxxInstantStealLoaded = true
-local FFlags = {
-    GameNetPVHeaderRotationalVelocityZeroCutoffExponent = -5000,
-    LargeReplicatorWrite5 = true,
-    LargeReplicatorEnabled9 = true,
-    AngularVelociryLimit = 360,
-    TimestepArbiterVelocityCriteriaThresholdTwoDt = 2147483646,
-    S2PhysicsSenderRate = 15000,
-    DisableDPIScale = true,
-    MaxDataPacketPerSend = 2147483647,
-    PhysicsSenderMaxBandwidthBps = 20000,
-    TimestepArbiterHumanoidLinearVelThreshold = 21,
-    MaxMissedWorldStepsRemembered = -2147483648,
-    PlayerHumanoidPropertyUpdateRestrict = true,
-    SimDefaultHumanoidTimestepMultiplier = 0,
-    StreamJobNOUVolumeLengthCap = 2147483647,
-    DebugSendDistInSteps = -2147483648,
-    GameNetDontSendRedundantNumTimes = 1,
-    CheckPVLinearVelocityIntegrateVsDeltaPositionThresholdPercent = 1,
-    CheckPVDifferencesForInterpolationMinVelThresholdStudsPerSecHundredth = 1,
-    LargeReplicatorSerializeRead3 = true,
-    ReplicationFocusNouExtentsSizeCutoffForPauseStuds = 2147483647,
-    CheckPVCachedVelThresholdPercent = 10,
-    CheckPVDifferencesForInterpolationMinRotVelThresholdRadsPerSecHundredth = 1,
-    GameNetDontSendRedundantDeltaPositionMillionth = 1,
-    InterpolationFrameVelocityThresholdMillionth = 5,
-    StreamJobNOUVolumeCap = 2147483647,
-    InterpolationFrameRotVelocityThresholdMillionth = 5,
-    CheckPVCachedRotVelThresholdPercent = 10,
-    WorldStepMax = 30,
-    InterpolationFramePositionThresholdMillionth = 5,
-    TimestepArbiterHumanoidTurningVelThreshold = 1,
-    SimOwnedNOUCountThresholdMillionth = 2147483647,
-    GameNetPVHeaderLinearVelocityZeroCutoffExponent = -5000,
-    NextGenReplicatorEnabledWrite4 = true,
-    TimestepArbiterOmegaThou = 1073741823,
-    MaxAcceptableUpdateDelay = 1,
-    LargeReplicatorSerializeWrite4 = true
-}
-local ESPFolder, ServerESP
-local serverPosition
-local positionConn
-local function ApplyFFlags()
-    for name, value in pairs(FFlags) do
-        pcall(function()
-            setfflag(tostring(name), tostring(value))
+local function setSpeed(enable)
+    if speedEnabled == enable then return end
+    speedEnabled = enable
+    if speedConn then
+        speedConn:Disconnect()
+        speedConn = nil
+    end
+    if speedEnabled then
+        speedConn = RunService.Heartbeat:Connect(function()
+            local char = player.Character
+            if not char then return end
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hum or not hrp then return end
+            local moveDir = hum.MoveDirection
+            if moveDir.Magnitude > 0 then
+                hrp.AssemblyLinearVelocity = Vector3.new(
+                    moveDir.X * speed,
+                    hrp.AssemblyLinearVelocity.Y,
+                    moveDir.Z * speed
+                )
+            end
         end)
     end
+    updateUI()
 end
-local function RespawnPlayer()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildWhichIsA("Humanoid")
-    if hum then
-        hum:ChangeState(Enum.HumanoidStateType.Dead)
-    end
-    char:ClearAllChildren()
-    local temp = Instance.new("Model", Workspace)
-    LocalPlayer.Character = temp
-    task.wait()
-    LocalPlayer.Character = char
-    temp:Destroy()
+local function tweenProperty(object, property, endValue, duration)
+    local tween = TweenService:Create(
+        object,
+        TweenInfo.new(duration or 0.2, Enum.EasingStyle.Quad),
+        {[property] = endValue}
+    )
+    tween:Play()
+    return tween
 end
-local function ClearESP()
-    if positionConn then
-        positionConn:Disconnect()
-        positionConn = nil
-    end
-    if ESPFolder then
-        ESPFolder:Destroy()
-        ESPFolder = nil
-    end
-    ServerESP = nil
+local powerLabel
+local sliderFill
+local function safeUpdateUI(callback)
+    pcall(callback)
 end
-local function CreateESPPart(name, color)
-    local part = Instance.new("Part")
-    part.Size = Vector3.new(2, 5, 2)
-    part.Anchored = true
-    part.CanCollide = false
-    part.Material = Enum.Material.Neon
-    part.Color = color
-    part.Transparency = 0.25
-    part.Parent = ESPFolder
-    local highlight = Instance.new("Highlight", part)
-    highlight.FillColor = color
-    highlight.OutlineColor = color
-    highlight.FillTransparency = 0.4
-    local bb = Instance.new("BillboardGui", part)
-    bb.Size = UDim2.new(0, 130, 0, 30)
-    bb.AlwaysOnTop = true
-    bb.Adornee = part
-    local txt = Instance.new("TextLabel", bb)
-    txt.Size = UDim2.new(1, 0, 1, 0)
-    txt.BackgroundTransparency = 1
-    txt.Text = name
-    txt.TextScaled = true
-    txt.Font = Enum.Font.GothamBold
-    txt.TextColor3 = color
-    return part
-end
-local function TrackServer(hrp)
-    serverPosition = hrp.Position
-    positionConn = hrp:GetPropertyChangedSignal("Position"):Connect(function()
-        task.wait(0.15)
-        if hrp then
-            serverPosition = hrp.Position
-            if ServerESP then
-                ServerESP.CFrame = CFrame.new(serverPosition)
-            end
+local lagButton
+local speedButton
+local function updateUI()
+    safeUpdateUI(function()
+        if isLagging then
+            lagButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            lagButton.Text = "Lagging"
+        else
+            lagButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            lagButton.Text = "Lagger"
+        end
+        if speedEnabled then
+            speedButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            speedButton.Text = "Speed: ON"
+        else
+            speedButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            speedButton.Text = "Speed: OFF"
         end
     end)
 end
-local function SetServerESP()
-    ClearESP()
-    ESPFolder = Instance.new("Folder", Workspace)
-    ESPFolder.Name = "DesyncESP"
-    ServerESP = CreateESPPart("SERVER POSITION", Color3.fromRGB(0, 200, 255))
-    local char = LocalPlayer.Character
-    if char then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            TrackServer(hrp)
-            ServerESP.CFrame = CFrame.new(serverPosition)
+local function updatePower(newPower)
+    power = math.clamp(newPower, 1, 200)
+    local percentage = math.floor((power / 200) * 100)
+    local pkts = power * 1800
+    powerLabel.Text = string.format("Power: %d%% (%d pkts)", percentage, pkts)
+    sliderFill.Size = UDim2.new((power - 1) / 199, 0, 1, 0)
+end
+local function toggleLag()
+    isLagging = not isLagging
+    if isLagging then
+        if not target or not target.Parent then
+            target = findTarget()
         end
-    end
-end
-local targetPositions = {
-    Vector3.new(-481.88, -3.79, 138.02),
-    Vector3.new(-481.75, -3.79, 89.18),
-    Vector3.new(-481.82, -3.79, 30.95),
-    Vector3.new(-481.75, -3.79, -17.79),
-    Vector3.new(-481.80, -3.79, -76.06),
-    Vector3.new(-481.72, -3.79, -124.70),
-    Vector3.new(-337.45, -3.85, -124.72),
-    Vector3.new(-337.37, -3.85, -76.07),
-    Vector3.new(-337.46, -3.79, -17.72),
-    Vector3.new(-337.41, -3.79, 30.92),
-    Vector3.new(-337.32, -3.79, 89.02),
-    Vector3.new(-337.27, -3.79, 137.90),
-    Vector3.new(-337.45, -3.79, 196.29),
-    Vector3.new(-337.37, -3.79, 244.91),
-    Vector3.new(-481.72, -3.79, 196.21),
-    Vector3.new(-481.76, -3.79, 244.92)
-}
-local gui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-gui.Name = "RyxxInstantStealUI"
-gui.ResetOnSpawn = false
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromOffset(250, 210)
-frame.Position = UDim2.fromScale(0.5, 0.5)
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.BackgroundColor3 = Color3.fromRGB(10, 25, 35)
-frame.Active = true
-frame.Draggable = true
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-Instance.new("UIStroke", frame).Color = Color3.fromRGB(0, 200, 255)
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -10, 0, 34)
-title.Position = UDim2.fromOffset(5, 5)
-title.BackgroundTransparency = 1
-title.Text = "Ryxx Instant Steal (Paid)"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 18
-title.TextColor3 = Color3.fromRGB(0, 220, 255)
-title.TextXAlignment = Enum.TextXAlignment.Center
-local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.new(1, -10, 0, 24)
-status.Position = UDim2.fromOffset(5, 42)
-status.BackgroundTransparency = 1
-status.Text = "Status: Ready"
-status.Font = Enum.Font.GothamMedium
-status.TextSize = 14
-status.TextColor3 = Color3.fromRGB(0, 200, 255)
-status.TextXAlignment = Enum.TextXAlignment.Center
-local setBtn = Instance.new("TextButton", frame)
-setBtn.Size = UDim2.new(1, -24, 0, 38)
-setBtn.Position = UDim2.fromOffset(12, 80)
-setBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-setBtn.Text = "SET POSITION"
-setBtn.Font = Enum.Font.GothamBold
-setBtn.TextSize = 16
-setBtn.TextColor3 = Color3.fromRGB(10, 20, 25)
-Instance.new("UICorner", setBtn).CornerRadius = UDim.new(0, 8)
-local desyncBtn = Instance.new("TextButton", frame)
-desyncBtn.Size = UDim2.new(1, -24, 0, 38)
-desyncBtn.Position = UDim2.fromOffset(12, 126)
-desyncBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-desyncBtn.Text = "ENABLE DESYNC"
-desyncBtn.Font = Enum.Font.GothamBold
-desyncBtn.TextSize = 16
-desyncBtn.TextColor3 = Color3.fromRGB(10, 20, 25)
-Instance.new("UICorner", desyncBtn).CornerRadius = UDim.new(0, 8)
-local pos1, pos2
-local beam1, beam2
-local part1, part2
-local function createBeam(position, index)
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local part = Instance.new("Part", Workspace)
-    part.Anchored = true
-    part.CanCollide = false
-    part.Transparency = 1
-    part.CFrame = CFrame.new(position)
-    local a0 = Instance.new("Attachment", part)
-    local a1 = Instance.new("Attachment", char.HumanoidRootPart)
-    local beam = Instance.new("Beam", Workspace)
-    beam.Attachment0 = a0
-    beam.Attachment1 = a1
-    beam.Width0 = 0.7
-    beam.Width1 = 0.7
-    beam.FaceCamera = true
-    beam.Color = ColorSequence.new(Color3.fromRGB(0, 200, 255))
-    beam.LightEmission = 1
-    if index == 1 then
-        if beam1 then beam1:Destroy() end
-        if part1 then part1:Destroy() end
-        beam1, part1 = beam, part
-    else
-        if beam2 then beam2:Destroy() end
-        if part2 then part2:Destroy() end
-        beam2, part2 = beam, part
-    end
-end
-setBtn.MouseButton1Click:Connect(function()
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        pos1 = hrp.CFrame
-        createBeam(pos1.Position, 1)
-        status.Text = "Status: Position Set"
-    end
-end)
-desyncBtn.MouseButton1Click:Connect(function()
-    desyncBtn.Text = "DESYNC ENABLED"
-    desyncBtn.AutoButtonColor = false
-    desyncBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
-    status.Text = "Status: Desync Active"
-    ApplyFFlags()
-    RespawnPlayer()
-    task.wait(0.6)
-    SetServerESP()
-end)
-task.spawn(function()
-    while task.wait(1) do
-        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local closest, dist = nil, math.huge
-            for _, v in ipairs(targetPositions) do
-                local d = (hrp.Position - v).Magnitude
-                if d < dist then
-                    dist = d
-                    closest = v
+        if not target then
+            isLagging = false
+            updateUI()
+            return
+        end
+        fireLoop = task.spawn(function()
+            while isLagging do
+                if not target or not target.Parent then
+                    target = findTarget()
+                    if not target then
+                        isLagging = false
+                        break
+                    end
                 end
+                local payloadSize = power * 150
+                local payload = string.rep("X", payloadSize)
+                local fireCount = math.max(1, math.floor(power / 50))
+                for i = 1, fireCount do
+                    pcall(function()
+                        target:FireServer(uuid, payload)
+                    end)
+                end
+                task.wait(0.035)
             end
-            if closest then
-                pos2 = CFrame.new(closest)
-                createBeam(pos2.Position, 2)
-            end
+        end)
+    else
+        if fireLoop then
+            task.cancel(fireLoop)
+            fireLoop = nil
+        end
+    end
+    updateUI()
+end
+local gui = Instance.new("ScreenGui")
+gui.Name = "SpeedLaggerGUI_" .. tick()
+gui.Parent = playerGui
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 200, 0, 200)
+mainFrame.Position = UDim2.new(0.5, -100, 0.5, -100)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = gui
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainFrame
+local uiStroke = Instance.new("UIStroke", mainFrame)
+uiStroke.Thickness = 2.5
+uiStroke.Color = Color3.fromRGB(255, 255, 255)
+uiStroke.Transparency = 0
+local uiGradient = Instance.new("UIGradient")
+uiGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.15, Color3.fromRGB(0, 0, 0)),
+    ColorSequenceKeypoint.new(0.30, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.45, Color3.fromRGB(0, 0, 0)),
+    ColorSequenceKeypoint.new(0.60, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(0, 0, 0)),
+    ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 255))
+})
+uiGradient.Rotation = 0
+uiGradient.Parent = uiStroke
+task.spawn(function()
+    while task.wait() do
+        for i = 0, 360, 2 do
+            uiGradient.Rotation = i
+            task.wait(0.01)
         end
     end
 end)
-ProximityPromptService.PromptButtonHoldEnded:Connect(function(prompt, who)
-    if who ~= LocalPlayer then return end
-    if prompt.Name ~= "Steal" and prompt.ActionText ~= "Steal" then return end
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    if pos1 then hrp.CFrame = pos1 end
-    if pos2 then task.wait(0.05); hrp.CFrame = pos2 end
-    status.Text = "Status: Steal Executed"
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 45)
+header.BackgroundTransparency = 1
+header.Parent = mainFrame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -10, 0, 18)
+title.Position = UDim2.new(0, 10, 0, 8)
+title.BackgroundTransparency = 1
+title.Text = "Ar1es Lagger"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 14
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = header
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -10, 0, 12)
+subtitle.Position = UDim2.new(0, 10, 0, 28)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Made by Onyx"
+subtitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+subtitle.TextSize = 9
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = header
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, -16, 1, -55)
+contentFrame.Position = UDim2.new(0, 8, 0, 50)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
+local powerSection = Instance.new("Frame")
+powerSection.Size = UDim2.new(1, 0, 0, 65)
+powerSection.Position = UDim2.new(0, 0, 0, 0)
+powerSection.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+powerSection.BorderSizePixel = 0
+powerSection.Parent = contentFrame
+local powerSectionCorner = Instance.new("UICorner")
+powerSectionCorner.CornerRadius = UDim.new(0, 8)
+powerSectionCorner.Parent = powerSection
+local powerSectionBorder = Instance.new("UIStroke")
+powerSectionBorder.Color = Color3.fromRGB(255, 255, 255)
+powerSectionBorder.Thickness = 2
+powerSectionBorder.Parent = powerSection
+powerLabel = Instance.new("TextLabel")
+powerLabel.Size = UDim2.new(1, -20, 0, 16)
+powerLabel.Position = UDim2.new(0, 10, 0, 6)
+powerLabel.BackgroundTransparency = 1
+powerLabel.Text = "Power: 23% (84600 pkts)"
+powerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+powerLabel.TextSize = 10
+powerLabel.Font = Enum.Font.GothamBold
+powerLabel.TextXAlignment = Enum.TextXAlignment.Left
+powerLabel.Parent = powerSection
+local sliderBg = Instance.new("Frame")
+sliderBg.Size = UDim2.new(1, -20, 0, 8)
+sliderBg.Position = UDim2.new(0, 10, 0, 32)
+sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+sliderBg.BorderSizePixel = 0
+sliderBg.Parent = powerSection
+local sliderBgCorner = Instance.new("UICorner")
+sliderBgCorner.CornerRadius = UDim.new(0, 4)
+sliderBgCorner.Parent = sliderBg
+sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(0.23, 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = sliderBg
+local sliderFillCorner = Instance.new("UICorner")
+sliderFillCorner.CornerRadius = UDim.new(0, 4)
+sliderFillCorner.Parent = sliderFill
+local sliderKnob = Instance.new("Frame")
+sliderKnob.Size = UDim2.new(0, 16, 0, 16)
+sliderKnob.Position = UDim2.new(1, -8, 0.5, -8)
+sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sliderKnob.BorderSizePixel = 0
+sliderKnob.Parent = sliderFill
+local sliderKnobCorner = Instance.new("UICorner")
+sliderKnobCorner.CornerRadius = UDim.new(1, 0)
+sliderKnobCorner.Parent = sliderKnob
+local sliderButton = Instance.new("TextButton")
+sliderButton.Size = UDim2.new(1, 0, 1, 8)
+sliderButton.Position = UDim2.new(0, 0, 0, -4)
+sliderButton.BackgroundTransparency = 1
+sliderButton.Text = ""
+sliderButton.Parent = sliderBg
+local minLabel = Instance.new("TextLabel")
+minLabel.Size = UDim2.new(0, 15, 0, 12)
+minLabel.Position = UDim2.new(0, 10, 0, 45)
+minLabel.BackgroundTransparency = 1
+minLabel.Text = "1"
+minLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+minLabel.TextSize = 8
+minLabel.Font = Enum.Font.Gotham
+minLabel.TextXAlignment = Enum.TextXAlignment.Left
+minLabel.Parent = powerSection
+local maxLabel = Instance.new("TextLabel")
+maxLabel.Size = UDim2.new(0, 25, 0, 12)
+maxLabel.Position = UDim2.new(1, -35, 0, 45)
+maxLabel.BackgroundTransparency = 1
+maxLabel.Text = "200"
+maxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+maxLabel.TextSize = 8
+maxLabel.Font = Enum.Font.Gotham
+maxLabel.TextXAlignment = Enum.TextXAlignment.Right
+maxLabel.Parent = powerSection
+lagButton = Instance.new("TextButton")
+lagButton.Size = UDim2.new(1, 0, 0, 32)
+lagButton.Position = UDim2.new(0, 0, 0, 73)
+lagButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+lagButton.Text = "Lagger"
+lagButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+lagButton.TextSize = 12
+lagButton.Font = Enum.Font.GothamBold
+lagButton.BorderSizePixel = 0
+lagButton.Parent = contentFrame
+local lagBtnCorner = Instance.new("UICorner")
+lagBtnCorner.CornerRadius = UDim.new(0, 8)
+lagBtnCorner.Parent = lagButton
+local lagBtnBorder = Instance.new("UIStroke")
+lagBtnBorder.Color = Color3.fromRGB(255, 255, 255)
+lagBtnBorder.Thickness = 2
+lagBtnBorder.Parent = lagButton
+lagButton.MouseButton1Click:Connect(function()
+    toggleLag()
 end)
-local discord = Instance.new("TextLabel", frame)
-discord.Size = UDim2.new(1,0,0,16)
-discord.Position = UDim2.fromOffset(0,186)
-discord.BackgroundTransparency = 1
-discord.Text = "discord.gg/UMmhuXFcmq"
-discord.Font = Enum.Font.GothamMedium
-discord.TextSize = 11
-discord.TextColor3 = Color3.fromRGB(0, 200, 255)
-discord.TextXAlignment = Enum.TextXAlignment.Center
+speedButton = Instance.new("TextButton")
+speedButton.Size = UDim2.new(1, 0, 0, 32)
+speedButton.Position = UDim2.new(0, 0, 0, 110)
+speedButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+speedButton.Text = "Speed: OFF"
+speedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedButton.TextSize = 12
+speedButton.Font = Enum.Font.GothamBold
+speedButton.BorderSizePixel = 0
+speedButton.Parent = contentFrame
+local speedBtnCorner = Instance.new("UICorner")
+speedBtnCorner.CornerRadius = UDim.new(0, 8)
+speedBtnCorner.Parent = speedButton
+local speedBtnBorder = Instance.new("UIStroke")
+speedBtnBorder.Color = Color3.fromRGB(255, 255, 255)
+speedBtnBorder.Thickness = 2
+speedBtnBorder.Parent = speedButton
+speedButton.MouseButton1Click:Connect(function()
+    setSpeed(not speedEnabled)
+end)
+local footer = Instance.new("TextLabel")
+footer.Size = UDim2.new(1, 0, 0, 14)
+footer.Position = UDim2.new(0, 0, 1, -18)
+footer.BackgroundTransparency = 1
+footer.Text = "discord.gg/Fk6e7fE7CF"
+footer.TextColor3 = Color3.fromRGB(255, 255, 255)
+footer.TextSize = 10
+footer.Font = Enum.Font.Gotham
+footer.TextXAlignment = Enum.TextXAlignment.Center
+footer.Parent = mainFrame
+local draggingSlider = false
+local function updateSliderPosition(inputPosition)
+    local relativeX = math.clamp((inputPosition.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+    local newPower = math.floor(1 + relativeX * 199)
+    updatePower(newPower)
+end
+sliderButton.MouseButton1Down:Connect(function()
+    draggingSlider = true
+end)
+sliderButton.TouchTap:Connect(function(inputPositions)
+    local pos = inputPositions[1]
+    updateSliderPosition(Vector2.new(pos.x, pos.y))
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateSliderPosition(input.Position)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSlider = false
+    end
+end)
+local draggingFrame = false
+local dragInput, dragStart, startPos
+local function updateDrag(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingFrame = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                draggingFrame = false
+            end
+        end)
+    end
+end)
+header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and draggingFrame then
+        updateDrag(input)
+    end
+end)
+updatePower(47)
