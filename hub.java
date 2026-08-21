@@ -824,4 +824,4 @@ saveConfig=function()
     local function ks(e)
         if e.kb then return {kb=e.kb.Name,gp=e.gp and e.gp.Name}
         elseif e.gp then return {gp=e.gp.Name}
-        else return {kb=... (Tiempo restante: 79 KB)
+        else return
